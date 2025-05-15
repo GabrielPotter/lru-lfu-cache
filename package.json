@@ -1,0 +1,17 @@
+{
+  "name": "lru-lfu-cache",
+  "version": "1.0.0",
+  "description": "LRU LFU cache",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "test": "jest "
+  },
+  "keywords": [],
+  "author": "Gabriel Potter",
+  "license": "MIT",
+  "private": true
+}
