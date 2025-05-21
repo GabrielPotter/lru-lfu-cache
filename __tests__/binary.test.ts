@@ -35,6 +35,8 @@ describe("Binary buffer test", () => {
             maxNodes: 100,
             currentMemory: 0,
             maxMemory: 1048576,
+            absHitRate:0,
+            relHitRate:0
         });
     });
     it("update cache items", async () => {

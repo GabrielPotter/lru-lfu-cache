@@ -72,8 +72,13 @@ export class UnifiedCache<K, V> {
     private minFreq: number;
     private mutex: Mutex;
     private currentMemory: number;
+    private absHit: number;
+    private absReq: number;
+    private relHit: number;
+    private relReq: number;
+    private hitResetCounter: number;
 
-    constructor(capacity: number, maxMemory: number, strategy: CacheStrategy = "LRU") {
+    constructor(capacity: number, maxMemory: number, strategy: CacheStrategy = "LRU", hitReset: number = 1000) {
         this.capacity = capacity;
         this.maxMemory = maxMemory;
         this.strategy = strategy;
@@ -83,8 +88,18 @@ export class UnifiedCache<K, V> {
         this.minFreq = 0;
         this.mutex = new Mutex();
         this.currentMemory = 0;
+        this.absHit = 0;
+        this.absReq = 0;
+        this.relHit = 0;
+        this.relReq = 0;
+        this.hitResetCounter = hitReset;
     }
-    async clear(params?: { capacity?: number; maxMemory?: number; strategy?: CacheStrategy }): Promise<void> {
+    async clear(params?: {
+        capacity?: number;
+        maxMemory?: number;
+        strategy?: CacheStrategy;
+        hitReset?: number;
+    }): Promise<void> {
         return this.mutex.runExclusive(() => {
             if (params?.capacity) {
                 this.capacity = params.capacity;
@@ -95,20 +110,34 @@ export class UnifiedCache<K, V> {
             if (params?.strategy) {
                 this.strategy = params.strategy;
             }
+            if (params?.hitReset) {
+                this.hitResetCounter = params.hitReset;
+            }
             this.cacheMap = new Map();
             this.lruList = new DoublyLinkedList();
             this.freqMap = new Map();
             this.minFreq = 0;
             this.mutex = new Mutex();
             this.currentMemory = 0;
+            this.absHit = 0;
+            this.absReq = 0;
+            this.relHit = 0;
+            this.relReq = 0;
         });
     }
 
     async get(key: K): Promise<V | undefined> {
         return this.mutex.runExclusive(() => {
+            this.absReq++;
+            this.relReq++;
+            if(this.relReq > this.hitResetCounter){
+                this.relReq = 1;
+                this.relHit = 0;
+            }
             const node = this.cacheMap.get(key);
             if (!node) return undefined;
-
+            this.absHit++;
+            this.relHit++;
             if (this.strategy === "LRU") {
                 this.lruList.moveToFront(node);
             } else {
@@ -234,6 +263,20 @@ export class UnifiedCache<K, V> {
             maxNodes: this.capacity,
             currentMemory: this.currentMemory,
             maxMemory: this.maxMemory,
+            absHitRate: (() => {
+                if (this.absHit == 0) {
+                    return 0;
+                } else {
+                    return Number((this.absHit / this.absReq).toFixed(2));
+                }
+            })(),
+            relHitRate: (() => {
+                if (this.relHit == 0) {
+                    return 0;
+                } else {
+                    return Number((this.relHit / this.relReq).toFixed(2));
+                }
+            })(),
         };
     }
     private sizeSuppressorReplacer(key: string, value: any) {

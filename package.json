@@ -1,6 +1,6 @@
 {
   "name": "lru-lfu-cache",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "LRU LFU cache",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -13,7 +13,7 @@
   "keywords": [],
   "author": "Gabriel Potter",
   "license": "MIT",
-  "private": true,
+  "private": false,
   "dependencies": {
     "async-mutex": "^0.5.0"
   }

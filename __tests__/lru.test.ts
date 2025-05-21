@@ -46,7 +46,7 @@ describe("LRU test", () => {
         expect(data3).toEqual(undefined);
         expect(data4).toEqual(undefined);
         const stat = cache.getStats();
-        expect(stat).toEqual({ strategy: "LRU", currentNodes: 3, maxNodes: 10, currentMemory: 78, maxMemory: 100 });
+        expect(stat).toEqual({ strategy: "LRU", currentNodes: 3, maxNodes: 10, currentMemory: 78, maxMemory: 100,absHitRate:0.5,relHitRate:0.5 });
     });
 
     it("delete the lru item cache item limit", async () => {

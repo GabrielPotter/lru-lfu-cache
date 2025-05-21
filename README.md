@@ -44,12 +44,13 @@ await cache.clear({ capacity: 10, strategy: "LFU" }); // Reset cache with new co
 ### Constructor
 
 ```ts
-new UnifiedCache<K, V>(capacity: number, maxMemory: number, strategy?: "LRU" | "LFU")
+new UnifiedCache<K, V>(capacity: number, maxMemory: number, strategy?: "LRU" | "LFU", hitReset?:1000)
 ```
 
 * `capacity`: Max number of nodes.
 * `maxMemory`: Approximate maximum memory usage in bytes.
 * `strategy`: Caching strategy, either `"LRU"` (default) or `"LFU"`.
+* `hitReset`: Reset the relative hitrate after hitReset request (get)
 
 ### Methods
 
@@ -65,7 +66,7 @@ Sets a value for the key. Updates existing node or adds a new one. Evicts nodes 
 
 Clears the cache and optionally updates configuration.
 
-#### `getStats(): { strategy: CacheStrategy; currentNodes: number; maxNodes: number; currentMemory: number; maxMemory: number }`
+#### `getStats(): { strategy: CacheStrategy; currentNodes: number; maxNodes: number; currentMemory: number; maxMemory: number; relHitRate: number; absHitRate: number}`
 
 Returns current cache statistics.
 
