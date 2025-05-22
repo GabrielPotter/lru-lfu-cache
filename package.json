@@ -1,6 +1,6 @@
 {
   "name": "lru-lfu-cache",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "LRU LFU cache",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -10,11 +10,15 @@
     "dev": "ts-node src/index.ts",
     "test": "jest --coverage"
   },
-  "keywords": [],
+  "keywords": ["LRU","LFU","cache"],
   "author": "Gabriel Potter",
   "license": "MIT",
-  "private": false,
   "dependencies": {
     "async-mutex": "^0.5.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GabrielPotter/lru-lfu-cache.git"
+  },
+  "homepage": "https://github.com/GabrielPotter/lru-lfu-cache.git#readme"
 }

@@ -3,6 +3,7 @@ import { UnifiedCache } from "../src";
 describe("hit rate test", () => {
     it("100%", async () => {
         const cache = new UnifiedCache<string, string>(100, 1024 * 1024, "LFU");
+        expect(cache.getStats().absHitRate).toEqual(0)
         await cache.set("key1", "data1");
         for (let i = 0; i < 100; i++) {
             await cache.get("key1");

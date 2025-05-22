@@ -130,7 +130,7 @@ export class UnifiedCache<K, V> {
         return this.mutex.runExclusive(() => {
             this.absReq++;
             this.relReq++;
-            if(this.relReq > this.hitResetCounter){
+            if (this.relReq > this.hitResetCounter) {
                 this.relReq = 1;
                 this.relHit = 0;
             }
@@ -264,14 +264,14 @@ export class UnifiedCache<K, V> {
             currentMemory: this.currentMemory,
             maxMemory: this.maxMemory,
             absHitRate: (() => {
-                if (this.absHit == 0) {
+                if (this.absReq == 0) {
                     return 0;
                 } else {
                     return Number((this.absHit / this.absReq).toFixed(2));
                 }
             })(),
             relHitRate: (() => {
-                if (this.relHit == 0) {
+                if (this.relReq == 0) {
                     return 0;
                 } else {
                     return Number((this.relHit / this.relReq).toFixed(2));
@@ -279,12 +279,14 @@ export class UnifiedCache<K, V> {
             })(),
         };
     }
+
     private sizeSuppressorReplacer(key: string, value: any) {
         if (Array.isArray(value) && value.length > 100) {
             return `[ ... ${value.length} items ]`;
         }
         return value;
     }
+
     dump() {
         const plainObj = Object.fromEntries(
             [...this.cacheMap.entries()].map(([key, node]) => [
@@ -299,7 +301,6 @@ export class UnifiedCache<K, V> {
                 },
             ])
         );
-
         return JSON.stringify(plainObj, this.sizeSuppressorReplacer, 2);
     }
 }
