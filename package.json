@@ -1,6 +1,6 @@
 {
-  "name": "lru-lfu-cache",
-  "version": "1.0.2",
+  "name": "@gabrielpotter/lru-lfu-cache",
+  "version": "1.0.4",
   "description": "LRU LFU cache",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

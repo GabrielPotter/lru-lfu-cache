@@ -1,6 +1,6 @@
 import { Mutex } from "async-mutex";
 
-type CacheStrategy = "LRU" | "LFU";
+export type CacheStrategy = "LRU" | "LFU";
 
 class CacheNode<K, V> {
     key: K;
@@ -145,6 +145,12 @@ export class UnifiedCache<K, V> {
             }
             return node.value;
         });
+    }
+
+    async test(key: K): Promise<boolean> {
+        return this.mutex.runExclusive(() =>{
+            return this.cacheMap.has(key);
+        })
     }
 
     async set(key: K, value: V): Promise<void> {
