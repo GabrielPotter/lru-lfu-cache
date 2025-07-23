@@ -68,4 +68,26 @@ describe("LRU test", () => {
         const data4 = await cache.get("key4");
         expect(data4).toEqual(undefined);
     });
+
+     it("remove specified cache item", async () => {
+        const cache = new UnifiedCache<string, string>(3, 1024 * 1024, "LRU");
+        await cache.set("key1", "data1");
+        await cache.set("key2", "data2");
+        await cache.set("key3", "data3"); // key3 -> key2 -> key1 : insert to head
+        const data2 = await cache.get("key2"); // key2 -> key3 -> key1 : move to head
+        expect(data2).toEqual("data2");
+        await cache.remove("key2"); // key3 -> key1
+        const data1 = await cache.get("key1"); //key1 -> key3
+        expect(data1).toEqual("data1");
+        const data3 = await cache.get("key2")
+        expect(data3).toEqual(undefined);
+        // await cache.set("key5", "data5"); //size limit key5 -> key4 -> key2 : insert head remove tail
+        // const data3 = await cache.get("key3");
+        // expect(data3).toEqual(undefined);
+        // await cache.get("key2");
+        // await cache.get("key5"); // key5 -> key2 -> key4
+        // await cache.set("key6", "data6"); // key6 -> key5 -> key2
+        // const data4 = await cache.get("key4");
+        // expect(data4).toEqual(undefined);
+    });
 });

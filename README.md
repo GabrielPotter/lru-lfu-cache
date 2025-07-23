@@ -15,10 +15,12 @@ A TypeScript implementation of a unified in-memory cache supporting both **LRU (
 ## Installation
 
 ```bash
-npm install async-mutex
+npm install @gabrielpotter/lru-lfu-cache
 ```
 
-No additional dependencies are required beyond `async-mutex`.
+## Dependencies
+
+`async-mutex`.
 
 ## Usage
 
@@ -58,9 +60,31 @@ new UnifiedCache<K, V>(capacity: number, maxMemory: number, strategy?: "LRU" | "
 
 Retrieves a value by key. Updates usage stats (LRU position or LFU frequency).
 
+#### `async getValueAndMeta(key: K): Promise<{ value: V; meta: { [key: string]: any } | undefined } | undefined>`
+
+Retrives the value and metadata by key. Updates usage stats (LRU position and LFU trequency)
+
+#### `async getByMeta(callback: (meta: { [key: string]: any }) => boolean): Promise<V[]>`
+
+Retrives all values for which the callback function evaluates to true on the metadata associated with each key. Updates usage stats (LRU position and LFU trequency)
+
+#### `async getMeta(key: K): Promise<{ [key: string]: any } | undefined> `
+
+Retrives the metadata by key. Updates usage stats (LRU position and LFU trequency)
+
+#### `async test(key: K): Promise<boolean> `
+
+Test if the key exists in the cache. Does not update usage stats.
+
 #### `async set(key: K, value: V): Promise<void>`
 
-Sets a value for the key. Updates existing node or adds a new one. Evicts nodes if capacity or memory limits exceeded.
+Sets a value for the key. Updates existing node or adds a new one. Evicts nodes if capacity or memory limits exceeded. Does not update usage stats.
+
+#### `async remove(key: K): Promise<void>`
+Remove the key and its associated value and metadata from the cache. Does not update usage stats.
+
+#### `async removeByMeta(callback: (meta: { [key: string]: any }) => boolean): Promise<void>`
+Remove all keys associated values and metadata from cache for which the callback function evaluates to true on the metadata associated with each key. Does not update usage stats.
 
 #### `async clear(params?: { capacity?: number; maxMemory?: number; strategy?: "LRU" | "LFU" }): Promise<void>`
 
@@ -91,7 +115,8 @@ Returns a human-readable JSON of the cache map, including keys, values, frequenc
     "freq": 1,
     "size": 32,
     "prev": null,
-    "next": "key2"
+    "next": "key2",
+    "meta": {}
   },
   "key2": {
     "key": "key2",
@@ -99,7 +124,8 @@ Returns a human-readable JSON of the cache map, including keys, values, frequenc
     "freq": 1,
     "size": 32,
     "prev": "key1",
-    "next": null
+    "next": null,
+    "meta":{"mk1":"mval1","mk2":"mval2"}
   }
 }
 ```

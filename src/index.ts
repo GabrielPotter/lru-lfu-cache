@@ -5,16 +5,18 @@ export type CacheStrategy = "LRU" | "LFU";
 class CacheNode<K, V> {
     key: K;
     value: V;
+    meta: { [key: string]: any };
     freq: number;
     size: number;
     prev: CacheNode<K, V> | null = null;
     next: CacheNode<K, V> | null = null;
 
-    constructor(key: K, value: V, size: number) {
+    constructor(key: K, value: V, size: number, meta: { [key: string]: any } = {}) {
         this.key = key;
         this.value = value;
         this.freq = 1;
         this.size = size;
+        this.meta = meta;
     }
 }
 
@@ -147,21 +149,89 @@ export class UnifiedCache<K, V> {
         });
     }
 
-    async test(key: K): Promise<boolean> {
-        return this.mutex.runExclusive(() =>{
-            return this.cacheMap.has(key);
-        })
+    async getValueAndMeta(key: K): Promise<{ value: V; meta: { [key: string]: any } | undefined } | undefined> {
+        return this.mutex.runExclusive(() => {
+            this.absReq++;
+            this.relReq++;
+            if (this.relReq > this.hitResetCounter) {
+                this.relReq = 1;
+                this.relHit = 0;
+            }
+            const node = this.cacheMap.get(key);
+            if (!node) return undefined;
+            this.absHit++;
+            this.relHit++;
+            if (this.strategy === "LRU") {
+                this.lruList.moveToFront(node);
+            } else {
+                this.updateFrequency(node);
+            }
+            return { value: node.value, meta: node.meta };
+        });
     }
 
-    async set(key: K, value: V): Promise<void> {
+    async getByMeta(callback: (meta: { [key: string]: any }) => boolean): Promise<V[]> {
+        return this.mutex.runExclusive(() => {
+            const res: V[] = [];
+            for (const [key, node] of this.cacheMap) {
+                this.absReq++;
+                this.relReq++;
+                if (this.relReq > this.hitResetCounter) {
+                    this.relReq = 1;
+                    this.relHit = 0;
+                }
+                if (callback(node.meta)) {
+                    this.absHit++;
+                    this.relHit++;
+                    if (this.strategy === "LRU") {
+                        this.lruList.moveToFront(node);
+                    } else {
+                        this.updateFrequency(node);
+                    }
+                    res.push(node.value);
+                }
+            }
+            return res;
+        });
+    }
+
+    async getMeta(key: K): Promise<{ [key: string]: any } | undefined> {
+        return this.mutex.runExclusive(() => {
+            this.absReq++;
+            this.relReq++;
+            if (this.relReq > this.hitResetCounter) {
+                this.relReq = 1;
+                this.relHit = 0;
+            }
+            const node = this.cacheMap.get(key);
+            if (!node) return undefined;
+            this.absHit++;
+            this.relHit++;
+            if (this.strategy === "LRU") {
+                this.lruList.moveToFront(node);
+            } else {
+                this.updateFrequency(node);
+            }
+            return node.meta;
+        });
+    }
+
+    async test(key: K): Promise<boolean> {
+        return this.mutex.runExclusive(() => {
+            return this.cacheMap.has(key);
+        });
+    }
+
+    async set(key: K, value: V, meta: { [mkey: string]: any } = {}): Promise<void> {
         return this.mutex.runExclusive(() => {
             const existingNode = this.cacheMap.get(key);
-            const size = this.roughSizeOfObject(value);
+            const size = this.roughSizeOfObject(value) + this.roughSizeOfObject(meta);
 
             if (existingNode) {
                 this.currentMemory -= existingNode.size;
                 existingNode.value = value;
                 existingNode.size = size;
+                existingNode.meta = meta;
                 this.currentMemory += size;
 
                 if (this.strategy === "LRU") {
@@ -174,7 +244,7 @@ export class UnifiedCache<K, V> {
                     this.evict();
                 }
 
-                const newNode = new CacheNode(key, value, size);
+                const newNode = new CacheNode(key, value, size, meta);
                 this.cacheMap.set(key, newNode);
                 this.currentMemory += size;
 
@@ -183,6 +253,36 @@ export class UnifiedCache<K, V> {
                 } else {
                     this.minFreq = 1;
                     this.addToFreqMap(newNode);
+                }
+            }
+        });
+    }
+    async remove(key: K): Promise<void> {
+        return this.mutex.runExclusive(() => {
+            const node = this.cacheMap.get(key);
+            if (node) {
+                if (this.strategy === "LRU") {
+                    this.lruList.removeNode(node);
+                } else {
+                    this.removeFreqMap(node);
+                }
+                this.cacheMap.delete(node.key);
+                this.currentMemory -= node.size;
+            }
+        });
+    }
+
+    async removeByMeta(callback: (meta: { [key: string]: any }) => boolean): Promise<void> {
+        return this.mutex.runExclusive(() => {
+            for (const [key, node] of this.cacheMap) {
+                if (callback(node.meta)) {
+                    if (this.strategy === "LRU") {
+                        this.lruList.removeNode(node);
+                    } else {
+                        this.removeFreqMap(node);
+                    }
+                    this.cacheMap.delete(node.key);
+                    this.currentMemory -= node.size;
                 }
             }
         });
@@ -213,17 +313,7 @@ export class UnifiedCache<K, V> {
     }
 
     private updateFrequency(node: CacheNode<K, V>): void {
-        const freq = node.freq;
-        const nodes = this.freqMap.get(freq);
-        if (nodes) {
-            nodes.delete(node);
-            if (nodes.size === 0) {
-                this.freqMap.delete(freq);
-                if (this.minFreq === freq) {
-                    this.minFreq++;
-                }
-            }
-        }
+        this.removeFreqMap(node);
         node.freq++;
         this.addToFreqMap(node);
     }
@@ -234,6 +324,22 @@ export class UnifiedCache<K, V> {
             this.freqMap.set(freq, new Set());
         }
         this.freqMap.get(freq)!.add(node);
+    }
+
+    private removeFreqMap(node: CacheNode<K, V>): void {
+        const freq = node.freq;
+        if (this.freqMap.has(freq)) {
+            const nodes = this.freqMap.get(freq);
+            if (nodes) {
+                nodes.delete(node);
+                if (nodes.size === 0) {
+                    this.freqMap.delete(freq);
+                    if (this.minFreq === freq) {
+                        this.minFreq++;
+                    }
+                }
+            }
+        }
     }
 
     private roughSizeOfObject(object: any): number {
